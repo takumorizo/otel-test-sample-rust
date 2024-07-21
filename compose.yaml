@@ -1,0 +1,33 @@
+x-logging: &logging
+  logging:
+    driver: json-file
+    options:
+      max-file: "1"
+      max-size: 3m
+services:
+  opentelemetry-collector:
+    <<: *logging
+    image: otel/opentelemetry-collector-contrib:0.103.1
+    container_name: opentelemetry-collector
+    volumes:
+      - ./telemetries/config/collector/config.yml/:/etc/opentelemetry-collector.yml
+      - /var/run/docker.sock:/var/run/docker.sock
+    command:
+      - "--config=/etc/opentelemetry-collector.yml"
+    ports:
+      - 4317:4317
+      - 4318:4318
+      - 13133:13133
+      - 8889:8889
+    stop_grace_period: 1s
+  jaeger:
+    <<: *logging
+    image: jaegertracing/all-in-one:1.58.1
+    container_name: jaeger
+    ports:
+      - "4317"  # OTLP gRPC default port
+      - "4318"  # OTLP HTTP default port (protobuf)
+      - 6831:6831/udp
+      - 16686:16686
+    depends_on:
+      - opentelemetry-collector

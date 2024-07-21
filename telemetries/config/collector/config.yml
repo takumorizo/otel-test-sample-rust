@@ -1,0 +1,21 @@
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+exporters:
+  logging:
+    loglevel: debug
+  otlp:
+    endpoint: "jaeger:4317"
+    tls:
+      insecure: true
+extensions:
+  health_check:
+service:
+  extensions: [health_check]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      exporters: [otlp, logging]

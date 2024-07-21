@@ -1,0 +1,12 @@
+[package]
+name = "otel-test-sample"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+otel-test = { path = "./otel-test", version = "*" }
+anyhow = "1"
+
+[workspace]
+members = ["otel-test"]
