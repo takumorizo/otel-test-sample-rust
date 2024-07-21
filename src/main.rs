@@ -27,8 +27,6 @@ async fn failed_otel_test() {
     let a = 10;
     let b = 20;
 
-    panic!("なんかで死んだ。");
-
     // when
     let c = sample_add_err(a, b).unwrap_or(0);
 
@@ -43,8 +41,6 @@ async fn panic_otel_test() {
     // given
     let a = 10;
     let b = 20;
-
-    panic!("なんかで死んだ。");
 
     // when
     let c = sample_add_panic(a, b).unwrap_or(0);

@@ -38,7 +38,6 @@ pub fn use_otel_at_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
                     SCHEMA_URL,
                 };
                 use otel_test::tokio::runtime::Handle;
-                use otel_test::tokio::runtime::Runtime;
                 use otel_test::tracing_core::Level;
                 use otel_test::tracing_opentelemetry::OpenTelemetryLayer;
                 use otel_test::tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -90,7 +89,12 @@ pub fn use_otel_at_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
                         .init();
 
                     std::panic::set_hook(Box::new(|panic_info| {
+                        eprintln!("panic occurred: {}", panic_info);
                         tracing::error!("panic occurred: {}", panic_info);
+                        // std::thread::sleep(std::time::Duration::from_secs(2));
+                        // let _ = Handle::current().spawn(async {
+                        //     opentelemetry::global::shutdown_tracer_provider();
+                        // });
                     }));
 
                     MyOtelGuard { tracer }
@@ -111,10 +115,20 @@ pub fn use_otel_at_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
             }
 
             // テスト対象の関数を実行
-            #block
-
-            // batch exporter が吐き出しきるために、1sec sleep
-            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+            let result = std::panic::catch_unwind(|| {
+                #block
+            });
+            if result.is_err() {
+                use otel_test::tokio::runtime::Handle;
+                tracing::error!("panic occurred @ {}", stringify!(#fn_name));
+                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+                let _ = Handle::current().spawn(async {
+                    opentelemetry::global::shutdown_tracer_provider();
+                });
+                panic!("panic occurred @ {}", stringify!(#fn_name));
+            } else {
+                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+            }
         }
     };
 
