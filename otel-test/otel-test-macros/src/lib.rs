@@ -38,6 +38,7 @@ pub fn use_otel_at_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
                     SCHEMA_URL,
                 };
                 use otel_test::tokio::runtime::Handle;
+                use otel_test::tokio::runtime::Runtime;
                 use otel_test::tracing_core::Level;
                 use otel_test::tracing_opentelemetry::OpenTelemetryLayer;
                 use otel_test::tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -68,13 +69,12 @@ pub fn use_otel_at_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
                                 .with_id_generator(RandomIdGenerator::default())
                                 .with_resource(my_resource()),
                         )
-                        .with_batch_config(BatchConfig::default())
                         .with_exporter(
                             opentelemetry_otlp::new_exporter()
                                 .tonic()
                                 .with_endpoint(collector_endpoint),
                         )
-                        .install_batch(runtime::Tokio)
+                        .install_simple()
                         .unwrap()
                 }
 
@@ -113,8 +113,8 @@ pub fn use_otel_at_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
             // テスト対象の関数を実行
             #block
 
-            // batch exporter が吐き出しきるために、10秒sleep
-            tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+            // batch exporter が吐き出しきるために、1sec sleep
+            tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
         }
     };
 

@@ -35,7 +35,7 @@ async fn failed_otel_test() {
     // then
     // todo: assert_eq とかで、死ぬと、jaeger に trace を投げる前に死ぬ。
     // todo: panic で死ぬと、jaeger に trace を投げる前に死ぬ。
-    // assert_eq!(a + b, c);
+    assert_eq!(a + b, c);
 }
 
 #[use_otel_at_test]
