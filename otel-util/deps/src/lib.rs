@@ -3,6 +3,8 @@ pub use opentelemetry;
 pub use opentelemetry_otlp;
 pub use opentelemetry_sdk;
 pub use opentelemetry_semantic_conventions;
+pub use serde::Deserialize;
+pub use serde::Serialize;
 pub use tokio;
 pub use tracing;
 pub use tracing_core;

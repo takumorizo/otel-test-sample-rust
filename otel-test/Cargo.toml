@@ -1,8 +1,0 @@
-[package]
-name = "otel-test"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-otel-test-deps = { path = "./otel-test-deps" }
-otel-test-macros = { path = "./otel-test-macros" }

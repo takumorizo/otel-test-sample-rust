@@ -26,21 +26,21 @@ pub fn use_otel_at_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
             // otel の初期化処理
             let __otel_guard_for_otel_test;
             {
-                use otel_test::opentelemetry::{global, KeyValue};
-                use otel_test::opentelemetry_otlp::WithExportConfig;
-                use otel_test::opentelemetry_sdk::{
+                use otel_util::opentelemetry::{global, KeyValue};
+                use otel_util::opentelemetry_otlp::WithExportConfig;
+                use otel_util::opentelemetry_sdk::{
                     runtime,
                     trace::{BatchConfig, RandomIdGenerator, Sampler, Tracer},
                     Resource,
                 };
-                use otel_test::opentelemetry_semantic_conventions::{
+                use otel_util::opentelemetry_semantic_conventions::{
                     resource::{DEPLOYMENT_ENVIRONMENT, SERVICE_NAME, SERVICE_VERSION},
                     SCHEMA_URL,
                 };
-                use otel_test::tokio::runtime::Handle;
-                use otel_test::tracing_core::Level;
-                use otel_test::tracing_opentelemetry::OpenTelemetryLayer;
-                use otel_test::tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+                use otel_util::tokio::runtime::Handle;
+                use otel_util::tracing_core::Level;
+                use otel_util::tracing_opentelemetry::OpenTelemetryLayer;
+                use otel_util::tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
                 fn my_resource() -> Resource {
                     Resource::from_schema_url(
@@ -127,7 +127,7 @@ pub fn use_otel_at_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
             };
 
             // 関数 block の async 実行と、panic-catch 部分
-            use otel_test::tokio::time::{sleep, Duration};
+            use otel_util::tokio::time::{sleep, Duration};
             use std::panic::{self, AssertUnwindSafe};
             // Use catch_unwind with AssertUnwindSafe to attempt to catch panics within async blocks
             // Since catch_unwind does not directly support async blocks, we wrap the async block in a closure
