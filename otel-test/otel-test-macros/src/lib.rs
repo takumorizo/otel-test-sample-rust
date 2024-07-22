@@ -80,21 +80,27 @@ pub fn use_otel_at_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
                 fn my_init_telemetry(collector_endpoint: &str) -> MyOtelGuard {
                     let tracer = my_init_tracer(collector_endpoint);
 
-                    tracing_subscriber::registry()
+                    // tracing_subscriber::registry()
+                    //     .with(tracing_subscriber::filter::LevelFilter::from_level(
+                    //         Level::INFO,
+                    //     ))
+                    //     // .with(tracing_subscriber::fmt::layer())// trace のログ出力はオフにする。
+                    //     .with(OpenTelemetryLayer::new(tracer.clone()))
+                    //     .init();
+                    let subscriber = tracing_subscriber::Registry::default()
                         .with(tracing_subscriber::filter::LevelFilter::from_level(
                             Level::INFO,
                         ))
                         // .with(tracing_subscriber::fmt::layer())// trace のログ出力はオフにする。
-                        .with(OpenTelemetryLayer::new(tracer.clone()))
-                        .init();
+                        .with(OpenTelemetryLayer::new(tracer.clone()));
+                    // トレーサーがまだ設定されていない場合にのみ、トレーサーを設定する
+                    if subscriber.try_init().is_err() {
+                        println!("Tracer is already set.");
+                    }
 
                     std::panic::set_hook(Box::new(|panic_info| {
                         eprintln!("panic occurred: {}", panic_info);
                         tracing::error!("panic occurred: {}", panic_info);
-                        // std::thread::sleep(std::time::Duration::from_secs(2));
-                        // let _ = Handle::current().spawn(async {
-                        //     opentelemetry::global::shutdown_tracer_provider();
-                        // });
                     }));
 
                     MyOtelGuard { tracer }
@@ -114,14 +120,15 @@ pub fn use_otel_at_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
                 __otel_guard_for_otel_test = my_init_telemetry(#endpoint);
             }
 
-            use otel_test::tokio::time::{sleep, Duration};
-            use std::panic::{self, AssertUnwindSafe};
 
-            // Define an async block to execute
+            // 関数 block の async 定義
             let execute_async_block = async {
                 #block
             };
 
+            // 関数 block の async 実行と、panic-catch 部分
+            use otel_test::tokio::time::{sleep, Duration};
+            use std::panic::{self, AssertUnwindSafe};
             // Use catch_unwind with AssertUnwindSafe to attempt to catch panics within async blocks
             // Since catch_unwind does not directly support async blocks, we wrap the async block in a closure
             // that is immediately invoked. This is a common pattern for working with catch_unwind in async contexts.
@@ -143,10 +150,13 @@ pub fn use_otel_at_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
             // Check if the async block panicked by examining the inner Result
             if join_result.is_err() {
-                // Handle panic
+                // otel の後処理：1sec 待機＋shutdown　を実施後にpanic を起こす。
                 tracing::error!("panic occurred");
-                sleep(Duration::from_secs(1)).await;
-                opentelemetry::global::shutdown_tracer_provider();
+                sleep(Duration::from_secs(1)).await; // trace の送信の前に、待機しないと、trace が送信されない。
+                let handle = tokio::spawn(async move {
+                    opentelemetry::global::shutdown_tracer_provider();
+                });
+                handle.await.unwrap();
                 panic!("panic occurred");
             } else {
                 // No panic, proceed as normal
