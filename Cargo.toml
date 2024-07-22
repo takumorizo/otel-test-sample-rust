@@ -5,8 +5,8 @@ edition = "2021"
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
-otel-test = { path = "./otel-test", version = "*" }
+otel-util = { path = "./otel-util", version = "*" }
 anyhow = "1"
 
 [workspace]
-members = ["otel-test"]
+members = ["otel-util"]

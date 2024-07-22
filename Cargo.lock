@@ -380,6 +380,25 @@ dependencies = [
 ]
 
 [[package]]
+name = "deps"
+version = "0.1.0"
+dependencies = [
+ "futures",
+ "opentelemetry",
+ "opentelemetry-http",
+ "opentelemetry-otlp",
+ "opentelemetry-semantic-conventions",
+ "opentelemetry_sdk",
+ "serde",
+ "tokio",
+ "tracing",
+ "tracing-actix-web",
+ "tracing-core",
+ "tracing-opentelemetry",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "deranged"
 version = "0.3.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -782,6 +801,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a7a70ba024b9dc04c27ea2f0c0548feb474ec5c54bba33a7f72f873a39d07b24"
 
 [[package]]
+name = "macros"
+version = "0.1.0"
+dependencies = [
+ "quote",
+ "syn 1.0.109",
+]
+
+[[package]]
 name = "matchers"
 version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -976,46 +1003,21 @@ dependencies = [
 ]
 
 [[package]]
-name = "otel-test"
-version = "0.1.0"
-dependencies = [
- "otel-test-deps",
- "otel-test-macros",
-]
-
-[[package]]
-name = "otel-test-deps"
-version = "0.1.0"
-dependencies = [
- "futures",
- "opentelemetry",
- "opentelemetry-http",
- "opentelemetry-otlp",
- "opentelemetry-semantic-conventions",
- "opentelemetry_sdk",
- "tokio",
- "tracing",
- "tracing-actix-web",
- "tracing-core",
- "tracing-opentelemetry",
- "tracing-subscriber",
-]
-
-[[package]]
-name = "otel-test-macros"
-version = "0.1.0"
-dependencies = [
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
 name = "otel-test-sample"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "otel-test",
+ "otel-util",
  "tokio",
+]
+
+[[package]]
+name = "otel-util"
+version = "0.1.0"
+dependencies = [
+ "deps",
+ "macros",
+ "propagators",
 ]
 
 [[package]]
@@ -1104,6 +1106,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "5e719e8df665df0d1c8fbfd238015744736151d4445ec0836b8e628aae103b77"
 dependencies = [
  "unicode-ident",
+]
+
+[[package]]
+name = "propagators"
+version = "0.1.0"
+dependencies = [
+ "deps",
+ "serde",
 ]
 
 [[package]]
