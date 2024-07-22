@@ -24,6 +24,8 @@ fn sample_add_panic(a: u64, b: u64) -> Result<u64> {
 // done: assert_eq とかで、死ぬと、jaeger に trace を投げる前に死ぬ。
 // done: panic で死ぬと、jaeger に trace を投げる前に死ぬ。
 // done: 非同期タスクで死ぬ
+// done: cargo test -- --test-threads=1 で死ぬ
+// todo: cargo test -- --test-threads=1, cargo test でもtrace 送信ができる。
 #[use_otel_at_test]
 async fn failed_otel_test() {
     // given
