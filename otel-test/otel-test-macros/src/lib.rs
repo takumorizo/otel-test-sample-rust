@@ -21,7 +21,7 @@ pub fn use_otel_at_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
     };
 
     let expanded = quote! {
-        #[tokio::test]
+        #[tokio::test(flavor = "current_thread")]
         async fn #fn_name() {
             // otel の初期化処理
             let __otel_guard_for_otel_test;
@@ -114,20 +114,43 @@ pub fn use_otel_at_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
                 __otel_guard_for_otel_test = my_init_telemetry(#endpoint);
             }
 
-            // テスト対象の関数を実行
-            let result = std::panic::catch_unwind(|| {
+            use otel_test::tokio::time::{sleep, Duration};
+            use std::panic::{self, AssertUnwindSafe};
+
+            // Define an async block to execute
+            let execute_async_block = async {
                 #block
-            });
-            if result.is_err() {
-                use otel_test::tokio::runtime::Handle;
-                tracing::error!("panic occurred @ {}", stringify!(#fn_name));
-                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-                let _ = Handle::current().spawn(async {
-                    opentelemetry::global::shutdown_tracer_provider();
-                });
-                panic!("panic occurred @ {}", stringify!(#fn_name));
+            };
+
+            // Use catch_unwind with AssertUnwindSafe to attempt to catch panics within async blocks
+            // Since catch_unwind does not directly support async blocks, we wrap the async block in a closure
+            // that is immediately invoked. This is a common pattern for working with catch_unwind in async contexts.
+            let result = panic::catch_unwind(AssertUnwindSafe(|| {
+                // We use tokio::spawn to execute the async block within the current runtime
+                // tokio::spawn returns a JoinHandle, which we can await on
+                // This effectively captures the result of the async block, including any panics
+                tokio::spawn(async move {
+                    execute_async_block.await;
+                })
+            }));
+
+            // Await on the JoinHandle from tokio::spawn
+            // This is where we actually check if the async block panicked
+            // The result of awaiting a JoinHandle is a Result<Result<T, E>, JoinError>
+            // The outer Result is Ok if the spawned task was not canceled
+            // The inner Result contains the Ok or Err value from the task itself
+            let join_result = result.unwrap().await;
+
+            // Check if the async block panicked by examining the inner Result
+            if join_result.is_err() {
+                // Handle panic
+                tracing::error!("panic occurred");
+                sleep(Duration::from_secs(1)).await;
+                opentelemetry::global::shutdown_tracer_provider();
+                panic!("panic occurred");
             } else {
-                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+                // No panic, proceed as normal
+                sleep(Duration::from_secs(1)).await;
             }
         }
     };

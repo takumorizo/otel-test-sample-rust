@@ -4,6 +4,7 @@ fn main() {
 
 use anyhow::{anyhow, Result};
 use otel_test::*;
+use tokio::sync::futures;
 
 #[tracing::instrument(err)]
 fn sample_add(a: u64, b: u64) -> Result<u64> {
@@ -21,6 +22,9 @@ fn sample_add_panic(a: u64, b: u64) -> Result<u64> {
     Err(anyhow!("some error at sample_add_panic"))
 }
 
+// done: assert_eq とかで、死ぬと、jaeger に trace を投げる前に死ぬ。
+// done: panic で死ぬと、jaeger に trace を投げる前に死ぬ。
+// done: 非同期タスクで死ぬ
 #[use_otel_at_test]
 async fn failed_otel_test() {
     // given
@@ -28,11 +32,10 @@ async fn failed_otel_test() {
     let b = 20;
 
     // when
+    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
     let c = sample_add_err(a, b).unwrap_or(0);
 
     // then
-    // todo: assert_eq とかで、死ぬと、jaeger に trace を投げる前に死ぬ。
-    // todo: panic で死ぬと、jaeger に trace を投げる前に死ぬ。
     assert_eq!(a + b, c);
 }
 
@@ -43,11 +46,10 @@ async fn panic_otel_test() {
     let b = 20;
 
     // when
+    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
     let c = sample_add_panic(a, b).unwrap_or(0);
 
     // then
-    // todo: assert_eq とかで、死ぬと、jaeger に trace を投げる前に死ぬ。
-    // todo: panic で死ぬと、jaeger に trace を投げる前に死ぬ。
     assert_eq!(a + b, c);
 }
 
@@ -57,7 +59,7 @@ async fn succeed_otel_test() {
     let a = 10;
     let b = 20;
 
-    // when
+    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
     let c = sample_add(a, b).unwrap_or(0);
 
     // then
