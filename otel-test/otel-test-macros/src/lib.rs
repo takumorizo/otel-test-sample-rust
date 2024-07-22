@@ -21,7 +21,7 @@ pub fn use_otel_at_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
     };
 
     let expanded = quote! {
-        #[tokio::test(flavor = "current_thread")]
+        #[tokio::test]
         async fn #fn_name() {
             // otel の初期化処理
             let __otel_guard_for_otel_test;
