@@ -1,3 +1,4 @@
+pub use futures;
 pub use opentelemetry;
 pub use opentelemetry_otlp;
 pub use opentelemetry_sdk;
