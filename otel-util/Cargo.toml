@@ -6,4 +6,4 @@ edition = "2021"
 [dependencies]
 deps = { path = "./deps" }
 macros = { path = "./macros" }
-propagators = { path = "./propagators" }
+cores = { path = "./cores" }
