@@ -1,6 +1,6 @@
 use deps::opentelemetry;
 use deps::opentelemetry::{global, propagation::Extractor, propagation::Injector};
-use serde::{Deserialize, Serialize};
+use deps::serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
 // 参考記事に倣って、実装。
