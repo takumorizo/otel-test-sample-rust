@@ -122,9 +122,10 @@ pub fn use_otel_at_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
 
             // 関数 block の async 定義
+            use otel_util::tracing::Instrument;
             let execute_async_block = async {
                 #block
-            };
+            }.instrument(tracing::info_span!(stringify!(#fn_name)));
 
             // 関数 block の async 実行と、panic-catch 部分
             use otel_util::tokio::time::{sleep, Duration};
@@ -151,7 +152,6 @@ pub fn use_otel_at_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
             // Check if the async block panicked by examining the inner Result
             if join_result.is_err() {
                 // otel の後処理：1sec 待機＋shutdown　を実施後にpanic を起こす。
-                tracing::error!("panic occurred");
                 sleep(Duration::from_secs(1)).await; // trace の送信の前に、待機しないと、trace が送信されない。
                 let handle = tokio::spawn(async move {
                     opentelemetry::global::shutdown_tracer_provider();
