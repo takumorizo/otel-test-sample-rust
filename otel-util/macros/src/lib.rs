@@ -7,7 +7,6 @@ pub fn use_otel_at_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as ItemFn);
     let fn_name = &input.sig.ident;
     let return_type = &input.sig.output;
-    println!("return_type: {:?}", return_type);
     assert_eq!(*return_type, syn::ReturnType::Default);
     let block = &input.block;
 
@@ -82,14 +81,6 @@ pub fn use_otel_at_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
                 fn my_init_telemetry(collector_endpoint: &str) -> MyOtelGuard {
                     let tracer = my_init_tracer(collector_endpoint);
-
-                    // tracing_subscriber::registry()
-                    //     .with(tracing_subscriber::filter::LevelFilter::from_level(
-                    //         Level::INFO,
-                    //     ))
-                    //     // .with(tracing_subscriber::fmt::layer())// trace のログ出力はオフにする。
-                    //     .with(OpenTelemetryLayer::new(tracer.clone()))
-                    //     .init();
                     let subscriber = tracing_subscriber::Registry::default()
                         .with(tracing_subscriber::filter::LevelFilter::from_level(
                             Level::INFO,
@@ -156,10 +147,10 @@ pub fn use_otel_at_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
             if join_result.is_err() {
                 // otel の後処理：1sec 待機＋shutdown　を実施後にpanic を起こす。
                 sleep(Duration::from_secs(1)).await; // trace の送信の前に、待機しないと、trace が送信されない。
-                let handle = tokio::spawn(async move {
-                    opentelemetry::global::shutdown_tracer_provider();
-                });
-                handle.await.unwrap();
+                // let handle = tokio::spawn(async move {
+                //     opentelemetry::global::shutdown_tracer_provider();
+                // });
+                // handle.await.unwrap();
                 panic!("panic occurred");
             } else {
                 // No panic, proceed as normal
