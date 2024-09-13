@@ -1,11 +1,14 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, AttributeArgs, ItemFn, Lit, Meta, NestedMeta};
+use syn::{parse_macro_input, token::Return, AttributeArgs, ItemFn, Lit, Meta, NestedMeta};
 
 #[proc_macro_attribute]
 pub fn use_otel_at_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as ItemFn);
     let fn_name = &input.sig.ident;
+    let return_type = &input.sig.output;
+    println!("return_type: {:?}", return_type);
+    assert_eq!(*return_type, syn::ReturnType::Default);
     let block = &input.block;
 
     let args = parse_macro_input!(_attr as AttributeArgs);

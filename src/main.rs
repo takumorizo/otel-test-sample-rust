@@ -40,22 +40,22 @@ async fn failed_otel_test() {
     assert_eq!(a + b, c);
 }
 
-// TODO: このテストは、fail すべきだが、use_otel_at_test では、pass してしまう。
-#[use_otel_at_test]
-async fn error_otel_test() -> anyhow::Result<()> {
-    // given
-    let a = 10;
-    let b = 20;
+// TODO: Return type は、型がない場合にのみ、対応している。
+// #[use_otel_at_test]
+// async fn error_otel_test() -> anyhow::Result<()> {
+//     // given
+//     let a = 10;
+//     let b = 20;
 
-    // when
-    tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-    let c = sample_add_err(a, b)?;
+//     // when
+//     tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+//     let c = sample_add_err(a, b)?;
 
-    // then
-    assert_eq!(100, 10);
-    assert_eq!(a + b, c);
-    Ok::<(), anyhow::Error>(())
-}
+//     // then
+//     assert_eq!(100, 10);
+//     assert_eq!(a + b, c);
+//     Ok::<(), anyhow::Error>(())
+// }
 
 #[use_otel_at_test]
 async fn panic_otel_test() {
