@@ -3,7 +3,7 @@ fn main() {
 }
 
 use anyhow::{anyhow, Result};
-use otel_util::*;
+use otel_util::{tracing, use_otel_at_test};
 
 #[tracing::instrument(err)]
 fn sample_add(a: u64, b: u64) -> Result<u64> {
@@ -18,14 +18,13 @@ fn sample_add_err(a: u64, b: u64) -> Result<u64> {
 #[tracing::instrument(err)]
 fn sample_add_panic(a: u64, b: u64) -> Result<u64> {
     panic!("some panic at sample_add_panic");
-    Err(anyhow!("some error at sample_add_panic"))
 }
 
 // DONE: assert_eq とかで、死ぬと、jaeger に trace を投げる前に死ぬ。
 // DONE: panic で死ぬと、jaeger に trace を投げる前に死ぬ。
 // DONE: 非同期タスクで死ぬ
 // DONE: cargo test -- --test-threads=1 で死ぬ
-// TODO: cargo test -- --test-threads=1, cargo test でも全てのtest がtrace 送信ができる。
+// TODO: cargo test -- --test-threads=1, cargo test でも全ての test がtrace 送信ができる。
 #[use_otel_at_test]
 async fn failed_otel_test() {
     // given

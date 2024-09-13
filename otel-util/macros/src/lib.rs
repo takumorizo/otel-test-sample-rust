@@ -1,13 +1,12 @@
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, token::Return, AttributeArgs, ItemFn, Lit, Meta, NestedMeta};
+use syn::{parse_macro_input, AttributeArgs, ItemFn, Lit, Meta, NestedMeta};
 
 #[proc_macro_attribute]
 pub fn use_otel_at_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as ItemFn);
     let fn_name = &input.sig.ident;
     let return_type = &input.sig.output;
-    println!("return_type: {:?}", return_type);
     assert_eq!(*return_type, syn::ReturnType::Default);
     let block = &input.block;
 
@@ -29,22 +28,24 @@ pub fn use_otel_at_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
             // otel の初期化処理
             let __otel_guard_for_otel_test;
             {
+                use otel_util::opentelemetry;
                 use otel_util::opentelemetry::{global, KeyValue};
+                use otel_util::opentelemetry_otlp;
                 use otel_util::opentelemetry_otlp::WithExportConfig;
+                use otel_util::opentelemetry_sdk;
                 use otel_util::opentelemetry_sdk::{
-                    runtime,
-                    trace::{BatchConfig, RandomIdGenerator, Sampler, Tracer},
+                    trace::{RandomIdGenerator, Sampler, Tracer},
                     Resource,
                 };
                 use otel_util::opentelemetry_semantic_conventions::{
-                    resource::{DEPLOYMENT_ENVIRONMENT, SERVICE_NAME, SERVICE_VERSION},
+                    resource::{DEPLOYMENT_ENVIRONMENT, SERVICE_NAME},
                     SCHEMA_URL,
                 };
                 use otel_util::tokio::runtime::Handle;
                 use otel_util::tracing_core::Level;
                 use otel_util::tracing_opentelemetry::OpenTelemetryLayer;
+                use otel_util::tracing_subscriber;
                 use otel_util::tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
-
                 fn my_resource() -> Resource {
                     Resource::from_schema_url(
                         [
@@ -82,14 +83,6 @@ pub fn use_otel_at_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
 
                 fn my_init_telemetry(collector_endpoint: &str) -> MyOtelGuard {
                     let tracer = my_init_tracer(collector_endpoint);
-
-                    // tracing_subscriber::registry()
-                    //     .with(tracing_subscriber::filter::LevelFilter::from_level(
-                    //         Level::INFO,
-                    //     ))
-                    //     // .with(tracing_subscriber::fmt::layer())// trace のログ出力はオフにする。
-                    //     .with(OpenTelemetryLayer::new(tracer.clone()))
-                    //     .init();
                     let subscriber = tracing_subscriber::Registry::default()
                         .with(tracing_subscriber::filter::LevelFilter::from_level(
                             Level::INFO,
@@ -123,7 +116,6 @@ pub fn use_otel_at_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
                 __otel_guard_for_otel_test = my_init_telemetry(#endpoint);
             }
 
-
             // 関数 block の async 定義
             use otel_util::tracing::Instrument;
             let execute_async_block = async {
@@ -151,22 +143,13 @@ pub fn use_otel_at_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
             // The outer Result is Ok if the spawned task was not canceled
             // The inner Result contains the Ok or Err value from the task itself
             let join_result = result.unwrap().await;
+            sleep(Duration::from_secs(1)).await; // trace の送信の前に、待機しないと、trace が送信されない。
 
             // Check if the async block panicked by examining the inner Result
             if join_result.is_err() {
-                // otel の後処理：1sec 待機＋shutdown　を実施後にpanic を起こす。
-                sleep(Duration::from_secs(1)).await; // trace の送信の前に、待機しないと、trace が送信されない。
-                let handle = tokio::spawn(async move {
-                    opentelemetry::global::shutdown_tracer_provider();
-                });
-                handle.await.unwrap();
                 panic!("panic occurred");
-            } else {
-                // No panic, proceed as normal
-                sleep(Duration::from_secs(1)).await;
             }
         }
     };
-
     TokenStream::from(expanded)
 }
