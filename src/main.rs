@@ -3,7 +3,7 @@ fn main() {
 }
 
 use anyhow::{anyhow, Result};
-use otel_util::*;
+use otel_util::{tracing, use_otel_at_test};
 
 #[tracing::instrument(err)]
 fn sample_add(a: u64, b: u64) -> Result<u64> {
