@@ -78,3 +78,14 @@ cargo test panic_otel_test
 注意）複数テストの同時実行時には、現状テストの計装は不可能です。(テスト間で、global::tracer を共有してしまうのを原因と想定しており、同時計装は非対応の予定です。)
 
 #### 6: 計装結果の確認
+Serviceにテスト名が表示される。
+![alt text](./images/Jaeger_view_1.png)
+
+succeed_otel_test の結果：呼出し先関数のspan は、#[tracing::instrument()]　を付与している場合は記録される。
+![alt text](./images/succeed_test.png)
+
+failed_otel_test の結果：呼出し先関数で起きた error は、#[tracing::instrument(err)]　を付与している場合は記録される。
+![alt text](./images/failed_test.png)
+
+panic_otel_test の結果：panic も表示される。
+![alt text](./images/panic_test.png)
