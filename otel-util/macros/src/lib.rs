@@ -2,6 +2,34 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{parse_macro_input, AttributeArgs, ItemFn, Lit, Meta, NestedMeta};
 
+struct UseOtelTestArgs {
+    pub endpoint: String,
+    pub others: Vec<NestedMeta>,
+}
+
+impl UseOtelTestArgs {
+    fn new(args: AttributeArgs) -> Self {
+        let mut endpoint = "grpc://localhost:4317".to_string();
+        let mut other_args = Vec::<NestedMeta>::new();
+        for arg in args {
+            match arg {
+                NestedMeta::Meta(Meta::NameValue(nv)) if nv.path.is_ident("endpoint") => {
+                    if let Lit::Str(s) = &nv.lit {
+                        endpoint = s.value();
+                    }
+                }
+                _ => {
+                    other_args.push(arg);
+                }
+            }
+        }
+        UseOtelTestArgs {
+            endpoint,
+            others: other_args,
+        }
+    }
+}
+
 #[proc_macro_attribute]
 pub fn use_otel_at_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as ItemFn);
@@ -11,21 +39,8 @@ pub fn use_otel_at_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let block = &input.block;
 
     let args = parse_macro_input!(_attr as AttributeArgs);
-    let mut endpoint = "grpc://localhost:4317".to_string();
-    let mut other_args = Vec::<NestedMeta>::new();
-
-    for arg in args {
-        match arg {
-            NestedMeta::Meta(Meta::NameValue(nv)) if nv.path.is_ident("endpoint") => {
-                if let Lit::Str(s) = &nv.lit {
-                    endpoint = s.value();
-                }
-            }
-            _ => {
-                other_args.push(arg);
-            }
-        }
-    }
+    let my_args = UseOtelTestArgs::new(args);
+    let (endpoint, other_args) = (my_args.endpoint, my_args.others);
 
     let tokio_test_attrs = match other_args.len() {
         0 => quote! { #[tokio::test] },
@@ -34,13 +49,14 @@ pub fn use_otel_at_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
         }
     };
 
-    // Print the endpoint and other_args for debugging
-    println!("function name: {}", fn_name);
-    println!("Endpoint: {}", endpoint);
-    println!("Other Args: {:?}", other_args);
+    if !other_args.is_empty() {
+        println!(
+            "Warning: Other macro args except for endpoint is depracted in use_otel_at_test macro, function name = {}, other macro args = {:?}",
+            fn_name, other_args
+        );
+    }
 
     let expanded = quote! {
-        // #[tokio::test]
         #tokio_test_attrs
         async fn #fn_name() {
             // otel の初期化処理
