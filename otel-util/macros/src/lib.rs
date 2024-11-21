@@ -11,19 +11,37 @@ pub fn use_otel_at_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let block = &input.block;
 
     let args = parse_macro_input!(_attr as AttributeArgs);
-    let endpoint = match args.first() {
-        Some(NestedMeta::Meta(Meta::NameValue(nv))) if nv.path.is_ident("endpoint") => {
-            if let Lit::Str(s) = &nv.lit {
-                s.value()
-            } else {
-                "grpc://localhost:4317".to_string() // デフォルトのエンドポイント
+    let mut endpoint = "grpc://localhost:4317".to_string();
+    let mut other_args = Vec::<NestedMeta>::new();
+
+    for arg in args {
+        match arg {
+            NestedMeta::Meta(Meta::NameValue(nv)) if nv.path.is_ident("endpoint") => {
+                if let Lit::Str(s) = &nv.lit {
+                    endpoint = s.value();
+                }
+            }
+            _ => {
+                other_args.push(arg);
             }
         }
-        _ => "grpc://localhost:4317".to_string(), // 引数がない場合のデフォルトのエンドポイント
+    }
+
+    let tokio_test_attrs = match other_args.len() {
+        0 => quote! { #[tokio::test] },
+        _ => {
+            quote! { #[tokio::test(#(#other_args),*)] }
+        }
     };
 
+    // Print the endpoint and other_args for debugging
+    println!("function name: {}", fn_name);
+    println!("Endpoint: {}", endpoint);
+    println!("Other Args: {:?}", other_args);
+
     let expanded = quote! {
-        #[tokio::test]
+        // #[tokio::test]
+        #tokio_test_attrs
         async fn #fn_name() {
             // otel の初期化処理
             let __otel_guard_for_otel_test;
