@@ -16,10 +16,10 @@ pub fn use_otel_at_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
             if let Lit::Str(s) = &nv.lit {
                 s.value()
             } else {
-                "http://localhost:4317".to_string() // デフォルトのエンドポイント
+                "grpc://localhost:4317".to_string() // デフォルトのエンドポイント
             }
         }
-        _ => "http://localhost:4317".to_string(), // 引数がない場合のデフォルトのエンドポイント
+        _ => "grpc://localhost:4317".to_string(), // 引数がない場合のデフォルトのエンドポイント
     };
 
     let expanded = quote! {
