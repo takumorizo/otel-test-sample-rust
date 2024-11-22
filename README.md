@@ -90,3 +90,6 @@ failed_otel_test の結果：呼出し先関数で起きた error は、#[tracin
 
 panic_otel_test の結果：panic も表示される。
 ![alt text](./images/panic_test.png)
+
+## Lisence
+This project is licensed under the MIT License, see the LICENSE file for details

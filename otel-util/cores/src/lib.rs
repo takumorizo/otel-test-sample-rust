@@ -3,8 +3,6 @@ use deps::opentelemetry::{global, propagation::Extractor, propagation::Injector}
 use deps::serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-// 参考記事に倣って、実装。
-// https://peterpaul.hashnode.dev/opentelemetry-context-propagation-with-rust
 // Serializable datastructure to hold the opentelemetry propagation context.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PropagationContext(pub HashMap<String, String>);
