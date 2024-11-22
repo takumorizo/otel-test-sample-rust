@@ -78,7 +78,11 @@ fn resource(service_name: &str, version: &str) -> Resource {
     )
 }
 
-fn init_tracer(collector_endpoint: &str, service_name: &str, version: &str) -> Tracer {
+fn init_default_batch_tracer(
+    collector_endpoint: &str,
+    service_name: &str,
+    version: &str,
+) -> Tracer {
     global::set_text_map_propagator(opentelemetry_sdk::propagation::TraceContextPropagator::new());
 
     opentelemetry_otlp::new_pipeline()
@@ -103,27 +107,98 @@ fn init_tracer(collector_endpoint: &str, service_name: &str, version: &str) -> T
         .unwrap()
 }
 
-pub fn init_telemetry(collector_endpoint: &str, service_name: &str, version: &str) -> OtelGuard {
-    let tracer = init_tracer(collector_endpoint, service_name, version);
+fn init_default_simple_tracer(
+    collector_endpoint: &str,
+    service_name: &str,
+    version: &str,
+) -> Tracer {
+    global::set_text_map_propagator(opentelemetry_sdk::propagation::TraceContextPropagator::new());
 
-    tracing_subscriber::registry()
+    opentelemetry_otlp::new_pipeline()
+        .tracing()
+        .with_trace_config(
+            opentelemetry_sdk::trace::Config::default()
+                // Customize sampling strategy
+                .with_sampler(Sampler::ParentBased(Box::new(Sampler::TraceIdRatioBased(
+                    1.0,
+                ))))
+                // If export trace to AWS X-Ray, you can use XrayIdGenerator
+                .with_id_generator(RandomIdGenerator::default())
+                .with_resource(resource(service_name, version)),
+        )
+        .with_exporter(
+            opentelemetry_otlp::new_exporter()
+                .tonic()
+                .with_endpoint(collector_endpoint),
+        )
+        .install_simple()
+        .unwrap()
+}
+
+pub fn init_otlp_subscribers(tracer: Tracer) -> OtelGuard {
+    let subscriber = tracing_subscriber::registry()
         .with(tracing_subscriber::filter::LevelFilter::from_level(
             Level::INFO,
         ))
         .with(tracing_subscriber::fmt::layer())
-        .with(OpenTelemetryLayer::new(tracer.clone()))
-        .init();
+        .with(OpenTelemetryLayer::new(tracer.clone()));
+
+    if subscriber.try_init().is_err() {
+        println!("Tracer is already set.");
+    }
 
     std::panic::set_hook(Box::new(|panic_info| {
         tracing::error!("panic occurred: {}", panic_info);
     }));
 
-    OtelGuard { tracer }
+    OtelGuard {}
 }
 
-pub struct OtelGuard {
-    tracer: Tracer,
+pub struct DefaultBatchOtelGuardFactory {
+    collector_endpoint: String,
+    service_name: String,
+    version: String,
 }
+
+impl DefaultBatchOtelGuardFactory {
+    pub fn new(collector_endpoint: &str, service_name: &str, version: &str) -> Self {
+        Self {
+            collector_endpoint: collector_endpoint.to_string(),
+            service_name: service_name.to_string(),
+            version: version.to_string(),
+        }
+    }
+
+    pub fn build(&self) -> OtelGuard {
+        let tracer =
+            init_default_batch_tracer(&self.collector_endpoint, &self.service_name, &self.version);
+        init_otlp_subscribers(tracer.clone())
+    }
+}
+
+pub struct DefaultSimpleOtelGuardFactory {
+    collector_endpoint: String,
+    service_name: String,
+    version: String,
+}
+
+impl DefaultSimpleOtelGuardFactory {
+    pub fn new(collector_endpoint: &str, service_name: &str, version: &str) -> Self {
+        Self {
+            collector_endpoint: collector_endpoint.to_string(),
+            service_name: service_name.to_string(),
+            version: version.to_string(),
+        }
+    }
+
+    pub fn build(&self) -> OtelGuard {
+        let tracer =
+            init_default_simple_tracer(&self.collector_endpoint, &self.service_name, &self.version);
+        init_otlp_subscribers(tracer.clone())
+    }
+}
+
+pub struct OtelGuard {}
 
 impl Drop for OtelGuard {
     fn drop(&mut self) {
