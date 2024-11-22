@@ -3,7 +3,7 @@ fn main() {
 }
 
 use anyhow::{anyhow, Result};
-use otel_util::{tracing, use_otel_at_test, use_otel_at_test_error};
+use otel_util::{tracing, use_otel_at_test};
 
 #[tracing::instrument(err)]
 fn sample_add(a: u64, b: u64) -> Result<u64> {
@@ -23,7 +23,7 @@ fn sample_add_panic(a: u64, b: u64) -> Result<u64> {
 // DONE: assert_eq とかで、死ぬと、jaeger に trace を投げる前に死ぬ。
 // DONE: panic で死ぬと、jaeger に trace を投げる前に死ぬ。
 // DONE: 非同期タスクで死ぬ
-// DONE: cargo test -- --test-threads=1 で死ぬ
+// DONE: cargo test -- --test-threads=1, cargo test で死なないようにする。
 // TODO: cargo test -- --test-threads=1, cargo test でも全ての test がtrace 送信ができる。
 #[use_otel_at_test]
 async fn failed_otel_test() {
@@ -39,8 +39,9 @@ async fn failed_otel_test() {
     assert_eq!(a + b, c);
 }
 
-// TODO: Return type は、型がない場合にのみ、対応している。
-#[use_otel_at_test_error]
+// DONE: Return type は、型がない場合にのみ、対応している。
+// DONE: use_otel_at_test だけで、Error 型変える場合に対応したい。
+#[use_otel_at_test]
 async fn error_otel_test() -> anyhow::Result<()> {
     // given
     let a = 10;
