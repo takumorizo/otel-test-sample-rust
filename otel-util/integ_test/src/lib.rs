@@ -25,6 +25,7 @@ mod tests {
     // DONE: cargo test -- --test-threads=1, cargo test で死なないようにする。
     // TODO: cargo test -- --test-threads=1, cargo test でも全ての test がtrace 送信ができる。
     // TODO: should_panic マクロの付与で、panic で test が通らない。
+    #[should_panic]
     #[use_otel_at_test]
     async fn failed_otel_test() {
         // given
@@ -73,7 +74,6 @@ mod tests {
         assert_eq!(a + b, c);
     }
 
-    #[should_panic]
     #[use_otel_at_test]
     async fn succeed_otel_test() {
         // given
