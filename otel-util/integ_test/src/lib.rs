@@ -23,8 +23,8 @@ mod tests {
     // DONE: panic で死ぬと、jaeger に trace を投げる前に死ぬ。
     // DONE: 非同期タスクで死ぬ
     // DONE: cargo test -- --test-threads=1, cargo test で死なないようにする。
+    // DONE: should_panic マクロの付与で、panic で test が通らない。
     // TODO: cargo test -- --test-threads=1, cargo test でも全ての test がtrace 送信ができる。
-    // TODO: should_panic マクロの付与で、panic で test が通らない。
     #[should_panic]
     #[use_otel_at_test]
     async fn failed_otel_test() {
