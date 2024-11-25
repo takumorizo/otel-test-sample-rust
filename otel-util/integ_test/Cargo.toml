@@ -1,12 +1,9 @@
 [package]
-name = "otel-test-sample"
+name = "integ_test"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
-otel-util = { path = "./otel-util", version = "*" }
+otel-util = { path = "../../otel-util", version = "*" }
 anyhow = "1"
-
-# [workspace]
-# members = ["otel-util"]
