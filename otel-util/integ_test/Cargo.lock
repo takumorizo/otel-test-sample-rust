@@ -1235,6 +1235,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "otel-util",
+ "serde_json",
  "testcontainers",
  "tokio",
 ]
