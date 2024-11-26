@@ -1,13 +1,8 @@
 const CONTAINER_RESULT_PATH: &str = "/result.json";
 
 // use super::trace_equivalency::TraceContent;
-use opentelemetry_proto::tonic::{
-    resource::{self, v1::Resource},
-    trace::v1::{ResourceSpans, TracesData},
-};
-use otel_util::opentelemetry::StringValue;
+use opentelemetry_proto::tonic::trace::v1::{ResourceSpans, TracesData};
 use std::{
-    fmt::Debug,
     io::{self, BufRead},
     os::unix::fs::PermissionsExt,
     vec,
