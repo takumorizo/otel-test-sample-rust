@@ -95,6 +95,7 @@ impl OriginalTestExecutor {
 async fn check_otlp_output_failed_otel_test() {
     // given
     let test_name = "failed_otel_test";
+    // when
     let original_executor = OriginalTestExecutor::new(test_name);
     original_executor.execute().await;
 
@@ -141,71 +142,27 @@ async fn check_otlp_output_failed_otel_test() {
 
 #[tokio::test]
 async fn check_otlp_output_error_otel_test() {
+    // given
     let test_name = "error_otel_test";
+    // when
     let original_executor = OriginalTestExecutor::new(test_name);
     original_executor.execute().await;
+}
 
-    // then
-    // 元の、otel version　を、0.21.0 から、最新にしないと、opentelemetry_otlp の test と同様のテストが実行できない気がするので、一旦原子的なチェックだけをする。
-    // let file = std::fs::File::open(result_path).unwrap();
-    // let reader = io::BufReader::new(file);
+#[tokio::test]
+async fn check_otlp_output_panic_otel_test() {
+    // given
+    let test_name = "panic_otel_test";
+    // when
+    let original_executor = OriginalTestExecutor::new(test_name);
+    original_executor.execute().await;
+}
 
-    // let mut lines = reader.lines();
-    // if let Some(Ok(line1)) = lines.next() {
-    //     let json1: Value = serde_json::from_str(&line1).unwrap();
-    //     if let Some(service_name) =
-    //         json1.pointer("/resourceSpans/0/resource/attributes/2/value/stringValue")
-    //     {
-    //         assert_eq!(service_name, "failed_otel_test");
-    //     } else {
-    //         panic!("Failed to get service name");
-    //     }
-
-    //     if let Some(event_name) =
-    //         json1.pointer("/resourceSpans/0/scopeSpans/0/spans/0/events/0/attributes/name")
-    //     {
-    //         let event_name_str = event_name.as_str().unwrap();
-    //         assert!(
-    //             event_name_str.contains("panicked at src/tests/original_test_case.rs"),
-    //             "Event name does not contain the expected panic message"
-    //         );
-    //     } else {
-    //         panic!("Failed to get event name");
-    //     }
-    // }
-
-    // if let Some(Ok(line2)) = lines.next() {
-    //     let json2: Value = serde_json::from_str(&line2).unwrap();
-    //     if let Some(service_name) =
-    //         json2.pointer("/resourceSpans/0/resource/attributes/2/value/stringValue")
-    //     {
-    //         assert_eq!(service_name, "failed_otel_test");
-    //     } else {
-    //         panic!("Failed to get service name");
-    //     }
-    // }
-
-    // then
-    // 元の、otel version　を、0.21.0 から、最新にしないと、opentelemetry_otlp の test と同様のテストが実行できない気がするので、一旦原子的なチェックだけをする。
-
-    // let result_spans =
-    //     read_spans_from_json(std::fs::File::open(result_path).expect("Failed to open result file"));
-
-    // let expected_spans = read_spans_from_json(
-    //     std::fs::File::open(expected_path).expect("Failed to open result file"),
-    // );
-    // print!("spans loaded");
-    // print!("{:?}", result_spans);
-    // print!("{:?}", expected_spans);
-
-    // TraceAsserter::new(result_spans, expected_spans).assert();
-
-    // let a = 1;
-
-    // unimplemented!("Check the result file");
-    // finally: 無くても、コンテナは消える。
-    // _container
-    //     .stop()
-    //     .await
-    //     .expect("Failed to stop opentelemetry-collector");
+#[tokio::test]
+async fn check_otlp_output_succeed_otel_test() {
+    // given
+    let test_name = "panic_otel_test";
+    // when
+    let original_executor = OriginalTestExecutor::new(test_name);
+    original_executor.execute().await;
 }
