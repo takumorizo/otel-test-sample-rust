@@ -34,6 +34,7 @@ impl UseOtelTestArgs {
 pub fn use_otel_at_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
     let input = parse_macro_input!(item as ItemFn);
     let fn_name = &input.sig.ident;
+    let attrs = &input.attrs;
     let return_type = &input.sig.output;
     let is_default_type = *return_type == syn::ReturnType::Default;
     let block = &input.block;
@@ -56,6 +57,7 @@ pub fn use_otel_at_test(_attr: TokenStream, item: TokenStream) -> TokenStream {
     };
 
     let expanded = quote! {
+        #(#attrs)*
         #tokio_test_attrs
         async fn #fn_name() {
             // otel の初期化処理
