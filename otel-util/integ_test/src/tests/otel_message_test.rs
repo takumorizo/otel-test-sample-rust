@@ -1,7 +1,10 @@
 const CONTAINER_RESULT_PATH: &str = "/result.json";
 
 use super::trace_equivalency::TraceContent;
-use opentelemetry_proto::tonic::trace::v1::ResourceSpans;
+use opentelemetry_proto::tonic::{
+    resource,
+    trace::v1::{ResourceSpans, TracesData},
+};
 use std::{
     io::{self, BufRead},
     os::unix::fs::PermissionsExt,
@@ -94,11 +97,22 @@ impl OriginalTestExecutor {
 
 fn build_trace_content(path: &str) -> TraceContent {
     let lines = io::BufReader::new(std::fs::File::open(path).unwrap()).lines();
-    let traces_data: Vec<ResourceSpans> = lines
+    let traces_data: Vec<TracesData> = lines
         .map_while(Result::ok)
-        .map(|line| serde_json::from_str(&line).expect("Failed to read json str"))
+        .map(|line| {
+            let trace_data: TracesData =
+                serde_json::from_str(&line).expect("Failed to read json file");
+            trace_data
+        })
         .collect();
-    TraceContent::new(traces_data.clone())
+    println!("traces_data: {:?}", traces_data);
+    let resource_spans: Vec<ResourceSpans> = traces_data
+        .into_iter()
+        .flat_map(|trace_data| trace_data.resource_spans)
+        .collect();
+    println!("resource_spans: {:?}", resource_spans);
+
+    TraceContent::new(resource_spans)
 }
 
 #[tokio::test]
@@ -115,6 +129,7 @@ async fn check_otlp_output_failed_otel_test() {
     let expected_trace_content = build_trace_content(&expected_path);
 
     assert_eq!(result_trace_content, expected_trace_content);
+    unimplemented!("expected と、result の比較が厳しすぎるので、todo:");
 }
 
 #[tokio::test]
@@ -131,6 +146,7 @@ async fn check_otlp_output_error_otel_test() {
     let expected_trace_content = build_trace_content(&expected_path);
 
     assert_eq!(result_trace_content, expected_trace_content);
+    unimplemented!("expected と、result の比較が厳しすぎるので、todo:");
 }
 
 #[tokio::test]
@@ -147,6 +163,7 @@ async fn check_otlp_output_panic_otel_test() {
     let expected_trace_content = build_trace_content(&expected_path);
 
     assert_eq!(result_trace_content, expected_trace_content);
+    unimplemented!("expected と、result の比較が厳しすぎるので、todo:");
 }
 
 #[tokio::test]
@@ -163,4 +180,5 @@ async fn check_otlp_output_succeed_otel_test() {
     let expected_trace_content = build_trace_content(&expected_path);
 
     assert_eq!(result_trace_content, expected_trace_content);
+    unimplemented!("expected と、result の比較が厳しすぎるので、todo:");
 }

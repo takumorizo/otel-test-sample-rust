@@ -16,17 +16,32 @@ impl TraceContent {
     pub fn is_eq(results: &[ResourceSpans], expected: &[ResourceSpans]) -> bool {
         let mut results_spans = Vec::new();
         let mut expected_spans = Vec::new();
-        let mut ans = true;
 
-        ans &= results.len() == expected.len();
+        assert_eq!(results.len(), expected.len());
         for i in 0..results.len() {
             let result_resource_span = &results[i];
             let expected_resource_span = &expected[i];
-            ans &= result_resource_span.resource == expected_resource_span.resource;
-            ans &= result_resource_span.schema_url == expected_resource_span.schema_url;
+            assert_eq!(
+                result_resource_span.resource,
+                expected_resource_span.resource
+            );
+            assert_eq!(
+                result_resource_span.schema_url,
+                expected_resource_span.schema_url
+            );
+            println!(
+                "result_resource_span.schema_url: {:?}",
+                result_resource_span.schema_url
+            );
+            println!(
+                "expected_resource_span.schema_url: {:?}",
+                expected_resource_span.schema_url
+            );
 
-            ans &=
-                result_resource_span.scope_spans.len() == expected_resource_span.scope_spans.len();
+            assert_eq!(
+                result_resource_span.scope_spans.len(),
+                expected_resource_span.scope_spans.len()
+            );
 
             for i in 0..result_resource_span.scope_spans.len() {
                 let results_scope_span = &result_resource_span.scope_spans[i];
@@ -39,8 +54,8 @@ impl TraceContent {
 
         let results_span_forest = SpanForest::from_spans(results_spans);
         let expected_span_forest = SpanForest::from_spans(expected_spans);
-        ans &= results_span_forest == expected_span_forest;
-        ans
+        assert_eq!(results_span_forest, expected_span_forest);
+        true
     }
 }
 
@@ -186,27 +201,53 @@ impl PartialEq for SpanTreeNode {
 }
 
 // assert all predicates parts of a span is the same
+// fn span_eq(left: &Span, right: &Span) -> bool {
+//     let mut ans = true;
+//     ans &= left.name == right.name;
+//     ans &= left.kind == right.kind;
+//     ans &= left.trace_state == right.trace_state;
+//     // ignore start_time_unit_nano
+//     // ignore end_time_unit_nano
+//     ans &= left.attributes == right.attributes;
+//     // ans &= left.links== right.links);
+//     // todo: for link== we need to translate the span ids between `left` and `right`
+//     ans &= left.status == right.status;
+
+//     ans &= left.events.len() == right.events.len();
+//     let length = left.events.len();
+//     for i in 0..length {
+//         let left_event = &left.events[i];
+//         let right_event = &right.events[i];
+//         ans &= left_event.name == right_event.name;
+//         // ignore time_unix_nano
+//         ans &= left_event.attributes == right_event.attributes;
+//         ans &= left_event.dropped_attributes_count == right_event.dropped_attributes_count
+//     }
+//     ans
+// }
 fn span_eq(left: &Span, right: &Span) -> bool {
-    let mut ans = true;
-    ans &= left.name == right.name;
-    ans &= left.kind == right.kind;
-    ans &= left.trace_state == right.trace_state;
+    assert_eq!(left.name, right.name);
+    assert_eq!(left.kind, right.kind);
+    assert_eq!(left.trace_state, right.trace_state);
     // ignore start_time_unit_nano
     // ignore end_time_unit_nano
-    ans &= left.attributes == right.attributes;
-    // ans &= left.links== right.links);
-    // todo: for link== we need to translate the span ids between `left` and `right`
-    ans &= left.status == right.status;
+    assert_eq!(left.attributes, right.attributes);
+    // assert_eq!(left.links, right.links);
+    // todo: for link, we need to translate the span ids between `left` and `right`
+    assert_eq!(left.status, right.status);
 
-    ans &= left.events.len() == right.events.len();
+    assert_eq!(left.events.len(), right.events.len());
     let length = left.events.len();
     for i in 0..length {
         let left_event = &left.events[i];
         let right_event = &right.events[i];
-        ans &= left_event.name == right_event.name;
+        assert_eq!(left_event.name, right_event.name);
         // ignore time_unix_nano
-        ans &= left_event.attributes == right_event.attributes;
-        ans &= left_event.dropped_attributes_count == right_event.dropped_attributes_count
+        assert_eq!(left_event.attributes, right_event.attributes);
+        assert_eq!(
+            left_event.dropped_attributes_count,
+            right_event.dropped_attributes_count
+        );
     }
-    ans
+    true
 }
