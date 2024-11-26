@@ -106,7 +106,7 @@ impl TraceInfoExtractor for ResourceSpans {
     fn get_service_name(&self) -> String {
         self.resource
             .clone()
-            .unwrap_or(Resource::default())
+            .unwrap_or_default()
             .attributes
             .iter()
             .find(|attr| attr.key == "service.name")
@@ -134,6 +134,45 @@ impl TraceInfoExtractor for ResourceSpans {
                 .collect();
             ans.extend(span_names);
         }
+        ans
+    }
+}
+
+trait SpanInfoExtractor {
+    fn get_span_name(&self) -> String;
+    fn get_event_names(&self) -> Vec<String>;
+    fn get_event_exception_messages(&self) -> Vec<String>;
+}
+
+impl SpanInfoExtractor for opentelemetry_proto::tonic::trace::v1::Span {
+    fn get_span_name(&self) -> String {
+        self.name.clone()
+    }
+
+    fn get_event_names(&self) -> Vec<String> {
+        let mut ans: Vec<String> = self.events.iter().map(|event| event.name.clone()).collect();
+        ans.sort();
+        ans
+    }
+
+    fn get_event_exception_messages(&self) -> Vec<String> {
+        let mut ans :Vec<String> = self.events
+            .iter()
+            .map(|event| {
+                event.attributes.iter().find_map(|attr| {
+                    if attr.key == "exception.message" {
+                        if let Some(opentelemetry_proto::tonic::common::v1::any_value::Value::StringValue(message)) = attr.value.as_ref().and_then(|v| v.value.as_ref()) {
+                            Some(message.clone())
+                        } else {
+                            None
+                        }
+                    } else {
+                        None
+                    }
+                }).unwrap_or_else(|| "".to_string())
+            })
+            .collect();
+        ans.sort();
         ans
     }
 }
@@ -186,6 +225,31 @@ impl TraceContent {
             })
             .sum()
     }
+
+    pub fn get_span_event_names(&self) -> std::collections::HashMap<String, Vec<String>> {
+        let mut span_event_names = std::collections::HashMap::new();
+        for resource_span in &self.trace {
+            for scope_span in &resource_span.scope_spans {
+                for span in &scope_span.spans {
+                    span_event_names.insert(span.get_span_name(), span.get_event_names());
+                }
+            }
+        }
+        span_event_names
+    }
+
+    pub fn get_span_event_exceptions(&self) -> std::collections::HashMap<String, Vec<String>> {
+        let mut span_event_names = std::collections::HashMap::new();
+        for resource_span in &self.trace {
+            for scope_span in &resource_span.scope_spans {
+                for span in &scope_span.spans {
+                    span_event_names
+                        .insert(span.get_span_name(), span.get_event_exception_messages());
+                }
+            }
+        }
+        span_event_names
+    }
 }
 
 fn build_trace_content(path: &str) -> TraceContent {
@@ -215,56 +279,62 @@ async fn check_otlp_output_failed_otel_test() {
     let result_path = original_executor.execute().await;
 
     // then
-    let result_trace_content = build_trace_content(&result_path);
+    let result = build_trace_content(&result_path);
     let expected_path = format!("./expected/{}.json", test_name);
-    let expected_trace_content = build_trace_content(&expected_path);
+    let expected = build_trace_content(&expected_path);
 
     println!("==============================");
-    println!(
-        "result_trace_content.trace: {:?}",
-        result_trace_content.trace
-    );
+    println!("result.trace: {:?}", result.trace);
     println!("==============================");
     println!("==============================");
-    println!(
-        "expected_trace_content.trace: {:?}",
-        expected_trace_content.trace
-    );
+    println!("expected.trace: {:?}", expected.trace);
     println!("==============================");
 
-    assert_eq!(
-        result_trace_content.get_span_names(),
-        expected_trace_content.get_span_names()
-    );
+    assert_eq!(result.get_span_names(), expected.get_span_names());
 
     println!(
-        "result_trace_content.get_span_names(): {:?}, expected_trace_content.get_span_names(): {:?}",
-        result_trace_content.get_span_names(), expected_trace_content.get_span_names()
+        "result.get_span_names(): {:?}, expected.get_span_names(): {:?}",
+        result.get_span_names(),
+        expected.get_span_names()
     );
 
-    assert_eq!(
-        result_trace_content.span_count(),
-        expected_trace_content.span_count()
-    );
+    assert_eq!(result.span_count(), expected.span_count());
 
     println!(
-        "result_trace_content.span_count(): {:?}, expected_trace_content.span_count(): {:?}",
-        result_trace_content.span_count(),
-        expected_trace_content.span_count()
+        "result.span_count(): {:?}, expected.span_count(): {:?}",
+        result.span_count(),
+        expected.span_count()
+    );
+
+    assert_eq!(result.status_count(2), expected.status_count(2));
+
+    println!(
+        "result.status_count(2): {:?}, expected.status_count(2): {:?}",
+        result.status_count(2),
+        expected.status_count(2)
     );
 
     assert_eq!(
-        result_trace_content.status_count(2),
-        expected_trace_content.status_count(2)
+        result.get_span_event_names(),
+        expected.get_span_event_names(),
     );
 
     println!(
-        "result_trace_content.status_count(2): {:?}, expected_trace_content.status_count(2): {:?}",
-        result_trace_content.status_count(2),
-        expected_trace_content.status_count(2)
+        "result.get_span_event_names(): {:?}, expected.get_span_event_names(): {:?}",
+        result.get_span_event_names(),
+        expected.get_span_event_names()
     );
 
-    unimplemented!("event name, event exception message の比較がまだなので、 todo");
+    assert_eq!(
+        result.get_span_event_exceptions(),
+        expected.get_span_event_exceptions(),
+    );
+
+    println!(
+        "result.get_span_event_exceptions(): {:?}, expected.get_span_event_exceptions(): {:?}",
+        result.get_span_event_exceptions(),
+        expected.get_span_event_exceptions()
+    );
 }
 
 #[tokio::test]
@@ -276,55 +346,61 @@ async fn check_otlp_output_error_otel_test() {
     let result_path = original_executor.execute().await;
 
     // then
-    let result_trace_content = build_trace_content(&result_path);
+    let result = build_trace_content(&result_path);
     let expected_path = format!("./expected/{}.json", test_name);
-    let expected_trace_content = build_trace_content(&expected_path);
+    let expected = build_trace_content(&expected_path);
 
     println!("==============================");
+    println!("result.trace: {:?}", result.trace);
+    println!("==============================");
+    println!("==============================");
+    println!("expected.trace: {:?}", expected.trace);
+    println!("==============================");
+
+    assert_eq!(result.get_span_names(), expected.get_span_names());
+
     println!(
-        "result_trace_content.trace: {:?}",
-        result_trace_content.trace
+        "result.get_span_names(): {:?}, expected.get_span_names(): {:?}",
+        result.get_span_names(),
+        expected.get_span_names()
     );
-    println!("==============================");
-    println!("==============================");
+
+    assert_eq!(result.span_count(), expected.span_count());
+
     println!(
-        "expected_trace_content.trace: {:?}",
-        expected_trace_content.trace
+        "result.span_count(): {:?}, expected.span_count(): {:?}",
+        result.span_count(),
+        expected.span_count()
     );
-    println!("==============================");
+
+    assert_eq!(result.status_count(2), expected.status_count(2));
+
+    println!(
+        "result.status_count(2): {:?}, expected.status_count(2): {:?}",
+        result.status_count(2),
+        expected.status_count(2)
+    );
+    assert_eq!(
+        result.get_span_event_names(),
+        expected.get_span_event_names(),
+    );
+
+    println!(
+        "result.get_span_event_names(): {:?}, expected.get_span_event_names(): {:?}",
+        result.get_span_event_names(),
+        expected.get_span_event_names()
+    );
 
     assert_eq!(
-        result_trace_content.get_span_names(),
-        expected_trace_content.get_span_names()
+        result.get_span_event_exceptions(),
+        expected.get_span_event_exceptions(),
     );
 
     println!(
-        "result_trace_content.get_span_names(): {:?}, expected_trace_content.get_span_names(): {:?}",
-        result_trace_content.get_span_names(), expected_trace_content.get_span_names()
+        "result.get_span_event_exceptions(): {:?}, expected.get_span_event_exceptions(): {:?}",
+        result.get_span_event_exceptions(),
+        expected.get_span_event_exceptions()
     );
-
-    assert_eq!(
-        result_trace_content.span_count(),
-        expected_trace_content.span_count()
-    );
-
-    println!(
-        "result_trace_content.span_count(): {:?}, expected_trace_content.span_count(): {:?}",
-        result_trace_content.span_count(),
-        expected_trace_content.span_count()
-    );
-
-    assert_eq!(
-        result_trace_content.status_count(2),
-        expected_trace_content.status_count(2)
-    );
-
-    println!(
-        "result_trace_content.status_count(2): {:?}, expected_trace_content.status_count(2): {:?}",
-        result_trace_content.status_count(2),
-        expected_trace_content.status_count(2)
-    );
-    unimplemented!("event name, event exception message の比較がまだなので、 todo");
 }
 
 #[tokio::test]
@@ -336,55 +412,60 @@ async fn check_otlp_output_panic_otel_test() {
     let result_path = original_executor.execute().await;
 
     // then
-    let result_trace_content = build_trace_content(&result_path);
+    let result = build_trace_content(&result_path);
     let expected_path = format!("./expected/{}.json", test_name);
-    let expected_trace_content = build_trace_content(&expected_path);
+    let expected = build_trace_content(&expected_path);
 
     println!("==============================");
+    println!("result.trace: {:?}", result.trace);
+    println!("==============================");
+    println!("expected.trace: {:?}", expected.trace);
+    println!("==============================");
+
+    assert_eq!(result.get_span_names(), expected.get_span_names());
+
     println!(
-        "result_trace_content.trace: {:?}",
-        result_trace_content.trace
+        "result.get_span_names(): {:?}, expected.get_span_names(): {:?}",
+        result.get_span_names(),
+        expected.get_span_names()
     );
-    println!("==============================");
-    println!("==============================");
+
+    assert_eq!(result.span_count(), expected.span_count());
+
     println!(
-        "expected_trace_content.trace: {:?}",
-        expected_trace_content.trace
+        "result.span_count(): {:?}, expected.span_count(): {:?}",
+        result.span_count(),
+        expected.span_count()
     );
-    println!("==============================");
+
+    assert_eq!(result.status_count(2), expected.status_count(2));
+
+    println!(
+        "result.status_count(2): {:?}, expected.status_count(2): {:?}",
+        result.status_count(2),
+        expected.status_count(2)
+    );
+    assert_eq!(
+        result.get_span_event_names(),
+        expected.get_span_event_names(),
+    );
+
+    println!(
+        "result.get_span_event_names(): {:?}, expected.get_span_event_names(): {:?}",
+        result.get_span_event_names(),
+        expected.get_span_event_names()
+    );
 
     assert_eq!(
-        result_trace_content.get_span_names(),
-        expected_trace_content.get_span_names()
+        result.get_span_event_exceptions(),
+        expected.get_span_event_exceptions(),
     );
 
     println!(
-        "result_trace_content.get_span_names(): {:?}, expected_trace_content.get_span_names(): {:?}",
-        result_trace_content.get_span_names(), expected_trace_content.get_span_names()
+        "result.get_span_event_exceptions(): {:?}, expected.get_span_event_exceptions(): {:?}",
+        result.get_span_event_exceptions(),
+        expected.get_span_event_exceptions()
     );
-
-    assert_eq!(
-        result_trace_content.span_count(),
-        expected_trace_content.span_count()
-    );
-
-    println!(
-        "result_trace_content.span_count(): {:?}, expected_trace_content.span_count(): {:?}",
-        result_trace_content.span_count(),
-        expected_trace_content.span_count()
-    );
-
-    assert_eq!(
-        result_trace_content.status_count(2),
-        expected_trace_content.status_count(2)
-    );
-
-    println!(
-        "result_trace_content.status_count(2): {:?}, expected_trace_content.status_count(2): {:?}",
-        result_trace_content.status_count(2),
-        expected_trace_content.status_count(2)
-    );
-    // unimplemented!("event name, event exception message の比較がまだなので、 todo");
 }
 
 #[tokio::test]
@@ -396,53 +477,38 @@ async fn check_otlp_output_succeed_otel_test() {
     let result_path = original_executor.execute().await;
 
     // then
-    let result_trace_content = build_trace_content(&result_path);
+    let result = build_trace_content(&result_path);
     let expected_path = format!("./expected/{}.json", test_name);
-    let expected_trace_content = build_trace_content(&expected_path);
+    let expected = build_trace_content(&expected_path);
 
-    // assert_eq!(result_trace_content, expected_trace_content);
+    // assert_eq!(result, expected);
     println!("==============================");
-    println!(
-        "result_trace_content.trace: {:?}",
-        result_trace_content.trace
-    );
+    println!("result.trace: {:?}", result.trace);
     println!("==============================");
-    println!("==============================");
-    println!(
-        "expected_trace_content.trace: {:?}",
-        expected_trace_content.trace
-    );
+    println!("expected.trace: {:?}", expected.trace);
     println!("==============================");
 
-    assert_eq!(
-        result_trace_content.get_span_names(),
-        expected_trace_content.get_span_names()
-    );
+    assert_eq!(result.get_span_names(), expected.get_span_names());
 
     println!(
-        "result_trace_content.get_span_names(): {:?}, expected_trace_content.get_span_names(): {:?}",
-        result_trace_content.get_span_names(), expected_trace_content.get_span_names()
+        "result.get_span_names(): {:?}, expected.get_span_names(): {:?}",
+        result.get_span_names(),
+        expected.get_span_names()
     );
 
-    assert_eq!(
-        result_trace_content.span_count(),
-        expected_trace_content.span_count()
-    );
+    assert_eq!(result.span_count(), expected.span_count());
 
     println!(
-        "result_trace_content.span_count(): {:?}, expected_trace_content.span_count(): {:?}",
-        result_trace_content.span_count(),
-        expected_trace_content.span_count()
+        "result.span_count(): {:?}, expected.span_count(): {:?}",
+        result.span_count(),
+        expected.span_count()
     );
 
-    assert_eq!(
-        result_trace_content.status_count(2),
-        expected_trace_content.status_count(2)
-    );
+    assert_eq!(result.status_count(2), expected.status_count(2));
 
     println!(
-        "result_trace_content.status_count(2): {:?}, expected_trace_content.status_count(2): {:?}",
-        result_trace_content.status_count(2),
-        expected_trace_content.status_count(2)
+        "result.status_count(2): {:?}, expected.status_count(2): {:?}",
+        result.status_count(2),
+        expected.status_count(2)
     );
 }
