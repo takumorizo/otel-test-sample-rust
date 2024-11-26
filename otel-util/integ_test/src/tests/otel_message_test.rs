@@ -46,41 +46,104 @@ impl CollectorContainerFactory {
     }
 }
 
+struct OriginalTestExecutor {
+    test_name: String,
+}
+
+impl OriginalTestExecutor {
+    fn new(test_name: &str) -> Self {
+        OriginalTestExecutor {
+            test_name: test_name.to_string(),
+        }
+    }
+
+    async fn execute(&self) {
+        let crate_path = std::env::current_dir()
+            .unwrap()
+            .to_string_lossy()
+            .into_owned();
+        let config_path = format!("{crate_path}/otel-collector-config.yaml");
+        let result_path = format!("{crate_path}/result/{}.json", self.test_name);
+        // let expected_path = format!("{crate_path}/expected/{test_name}.json");
+        let file = std::fs::File::create(result_path.clone()).unwrap();
+        file.set_permissions(std::fs::Permissions::from_mode(0o666))
+            .unwrap();
+
+        let collector_factory = CollectorContainerFactory::new(
+            GenericImage::new("otel/opentelemetry-collector-contrib", "0.103.1"),
+            &config_path,
+            &result_path,
+        );
+        let _container = collector_factory
+            .build()
+            .await
+            .expect("Failed to start opentelemetry-collector");
+
+        // when
+        tokio::process::Command::new("cargo")
+            .arg("test")
+            .arg(format!("tests::original_test_case::{}", self.test_name))
+            .output()
+            .await
+            .expect("Failed to execute cargo test");
+
+        // tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+    }
+}
+
 #[tokio::test]
 async fn check_otlp_output_failed_otel_test() {
-    let test_name = "failed_otel_test";
     // given
+    let test_name = "failed_otel_test";
+    let original_executor = OriginalTestExecutor::new(test_name);
+    original_executor.execute().await;
 
-    let crate_path = std::env::current_dir()
-        .unwrap()
-        .to_string_lossy()
-        .into_owned();
-    let config_path = format!("{crate_path}/otel-collector-config.yaml");
-    let result_path = format!("{crate_path}/result/{test_name}.json");
-    // let expected_path = format!("{crate_path}/expected/{test_name}.json");
-    let file = std::fs::File::create(result_path.clone()).unwrap();
-    file.set_permissions(std::fs::Permissions::from_mode(0o666))
-        .unwrap();
+    // then
+    // 元の、otel version　を、0.21.0 から、最新にしないと、opentelemetry_otlp の test と同様のテストが実行できない気がするので、一旦原子的なチェックだけをする。
+    // let file = std::fs::File::open(result_path).unwrap();
+    // let reader = io::BufReader::new(file);
 
-    let collector_factory = CollectorContainerFactory::new(
-        GenericImage::new("otel/opentelemetry-collector-contrib", "0.103.1"),
-        &config_path,
-        &result_path,
-    );
-    let _container = collector_factory
-        .build()
-        .await
-        .expect("Failed to start opentelemetry-collector");
+    // let mut lines = reader.lines();
+    // if let Some(Ok(line1)) = lines.next() {
+    //     let json1: Value = serde_json::from_str(&line1).unwrap();
+    //     if let Some(service_name) =
+    //         json1.pointer("/resourceSpans/0/resource/attributes/2/value/stringValue")
+    //     {
+    //         assert_eq!(service_name, "failed_otel_test");
+    //     } else {
+    //         panic!("Failed to get service name");
+    //     }
 
-    // when
-    tokio::process::Command::new("cargo")
-        .arg("test")
-        .arg(format!("tests::original_test_case::{test_name}"))
-        .output()
-        .await
-        .expect("Failed to execute cargo test");
+    //     if let Some(event_name) =
+    //         json1.pointer("/resourceSpans/0/scopeSpans/0/spans/0/events/0/attributes/name")
+    //     {
+    //         let event_name_str = event_name.as_str().unwrap();
+    //         assert!(
+    //             event_name_str.contains("panicked at src/tests/original_test_case.rs"),
+    //             "Event name does not contain the expected panic message"
+    //         );
+    //     } else {
+    //         panic!("Failed to get event name");
+    //     }
+    // }
 
-    tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+    // if let Some(Ok(line2)) = lines.next() {
+    //     let json2: Value = serde_json::from_str(&line2).unwrap();
+    //     if let Some(service_name) =
+    //         json2.pointer("/resourceSpans/0/resource/attributes/2/value/stringValue")
+    //     {
+    //         assert_eq!(service_name, "failed_otel_test");
+    //     } else {
+    //         panic!("Failed to get service name");
+    //     }
+    // }
+}
+
+#[tokio::test]
+async fn check_otlp_output_error_otel_test() {
+    let test_name = "error_otel_test";
+    let original_executor = OriginalTestExecutor::new(test_name);
+    original_executor.execute().await;
 
     // then
     // 元の、otel version　を、0.21.0 から、最新にしないと、opentelemetry_otlp の test と同様のテストが実行できない気がするので、一旦原子的なチェックだけをする。
