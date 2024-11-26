@@ -105,12 +105,12 @@ fn build_trace_content(path: &str) -> TraceContent {
             trace_data
         })
         .collect();
-    println!("traces_data: {:?}", traces_data);
+    // println!("traces_data: {:?}", traces_data);
     let resource_spans: Vec<ResourceSpans> = traces_data
         .into_iter()
         .flat_map(|trace_data| trace_data.resource_spans)
         .collect();
-    println!("resource_spans: {:?}", resource_spans);
+    // println!("resource_spans: {:?}", resource_spans);
 
     TraceContent::new(resource_spans)
 }

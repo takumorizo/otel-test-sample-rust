@@ -21,14 +21,6 @@ impl TraceContent {
         for i in 0..results.len() {
             let result_resource_span = &results[i];
             let expected_resource_span = &expected[i];
-            assert_eq!(
-                result_resource_span.resource,
-                expected_resource_span.resource
-            );
-            assert_eq!(
-                result_resource_span.schema_url,
-                expected_resource_span.schema_url
-            );
             println!(
                 "result_resource_span.schema_url: {:?}",
                 result_resource_span.schema_url
@@ -37,7 +29,14 @@ impl TraceContent {
                 "expected_resource_span.schema_url: {:?}",
                 expected_resource_span.schema_url
             );
-
+            assert_eq!(
+                result_resource_span.resource,
+                expected_resource_span.resource
+            );
+            assert_eq!(
+                result_resource_span.schema_url,
+                expected_resource_span.schema_url
+            );
             assert_eq!(
                 result_resource_span.scope_spans.len(),
                 expected_resource_span.scope_spans.len()
