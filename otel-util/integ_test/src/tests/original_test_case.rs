@@ -17,7 +17,6 @@ fn sample_add_panic(a: u64, b: u64) -> Result<u64> {
     panic!("some panic at sample_add_panic");
 }
 
-// DONE: assert_eq とかで、死ぬと、jaeger に trace を投げる前に死ぬ。
 // DONE: panic で死ぬと、jaeger に trace を投げる前に死ぬ。
 // DONE: 非同期タスクで死ぬ
 // DONE: cargo test -- --test-threads=1, cargo test で死なないようにする。

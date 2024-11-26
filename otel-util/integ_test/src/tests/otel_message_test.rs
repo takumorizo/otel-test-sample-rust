@@ -1,6 +1,7 @@
 const CONTAINER_RESULT_PATH: &str = "/result.json";
 
-use serde_json::Value;
+use super::trace_equivalency::TraceContent;
+use opentelemetry_proto::tonic::trace::v1::ResourceSpans;
 use std::{
     io::{self, BufRead},
     os::unix::fs::PermissionsExt,
@@ -57,7 +58,7 @@ impl OriginalTestExecutor {
         }
     }
 
-    async fn execute(&self) {
+    async fn execute(&self) -> String {
         let crate_path = std::env::current_dir()
             .unwrap()
             .to_string_lossy()
@@ -87,8 +88,17 @@ impl OriginalTestExecutor {
             .await
             .expect("Failed to execute cargo test");
 
-        // tokio::time::sleep(tokio::time::Duration::from_secs(3)).await;
+        result_path
     }
+}
+
+fn build_trace_content(path: &str) -> TraceContent {
+    let lines = io::BufReader::new(std::fs::File::open(path).unwrap()).lines();
+    let traces_data: Vec<ResourceSpans> = lines
+        .map_while(Result::ok)
+        .map(|line| serde_json::from_str(&line).expect("Failed to read json str"))
+        .collect();
+    TraceContent::new(traces_data.clone())
 }
 
 #[tokio::test]
@@ -97,47 +107,14 @@ async fn check_otlp_output_failed_otel_test() {
     let test_name = "failed_otel_test";
     // when
     let original_executor = OriginalTestExecutor::new(test_name);
-    original_executor.execute().await;
+    let result_path = original_executor.execute().await;
 
     // then
-    // 元の、otel version　を、0.21.0 から、最新にしないと、opentelemetry_otlp の test と同様のテストが実行できない気がするので、一旦原子的なチェックだけをする。
-    // let file = std::fs::File::open(result_path).unwrap();
-    // let reader = io::BufReader::new(file);
+    let result_trace_content = build_trace_content(&result_path);
+    let expected_path = format!("./expected/{}.json", test_name);
+    let expected_trace_content = build_trace_content(&expected_path);
 
-    // let mut lines = reader.lines();
-    // if let Some(Ok(line1)) = lines.next() {
-    //     let json1: Value = serde_json::from_str(&line1).unwrap();
-    //     if let Some(service_name) =
-    //         json1.pointer("/resourceSpans/0/resource/attributes/2/value/stringValue")
-    //     {
-    //         assert_eq!(service_name, "failed_otel_test");
-    //     } else {
-    //         panic!("Failed to get service name");
-    //     }
-
-    //     if let Some(event_name) =
-    //         json1.pointer("/resourceSpans/0/scopeSpans/0/spans/0/events/0/attributes/name")
-    //     {
-    //         let event_name_str = event_name.as_str().unwrap();
-    //         assert!(
-    //             event_name_str.contains("panicked at src/tests/original_test_case.rs"),
-    //             "Event name does not contain the expected panic message"
-    //         );
-    //     } else {
-    //         panic!("Failed to get event name");
-    //     }
-    // }
-
-    // if let Some(Ok(line2)) = lines.next() {
-    //     let json2: Value = serde_json::from_str(&line2).unwrap();
-    //     if let Some(service_name) =
-    //         json2.pointer("/resourceSpans/0/resource/attributes/2/value/stringValue")
-    //     {
-    //         assert_eq!(service_name, "failed_otel_test");
-    //     } else {
-    //         panic!("Failed to get service name");
-    //     }
-    // }
+    assert_eq!(result_trace_content, expected_trace_content);
 }
 
 #[tokio::test]
@@ -146,7 +123,14 @@ async fn check_otlp_output_error_otel_test() {
     let test_name = "error_otel_test";
     // when
     let original_executor = OriginalTestExecutor::new(test_name);
-    original_executor.execute().await;
+    let result_path = original_executor.execute().await;
+
+    // then
+    let result_trace_content = build_trace_content(&result_path);
+    let expected_path = format!("./expected/{}.json", test_name);
+    let expected_trace_content = build_trace_content(&expected_path);
+
+    assert_eq!(result_trace_content, expected_trace_content);
 }
 
 #[tokio::test]
@@ -155,14 +139,28 @@ async fn check_otlp_output_panic_otel_test() {
     let test_name = "panic_otel_test";
     // when
     let original_executor = OriginalTestExecutor::new(test_name);
-    original_executor.execute().await;
+    let result_path = original_executor.execute().await;
+
+    // then
+    let result_trace_content = build_trace_content(&result_path);
+    let expected_path = format!("./expected/{}.json", test_name);
+    let expected_trace_content = build_trace_content(&expected_path);
+
+    assert_eq!(result_trace_content, expected_trace_content);
 }
 
 #[tokio::test]
 async fn check_otlp_output_succeed_otel_test() {
     // given
-    let test_name = "panic_otel_test";
+    let test_name = "succeed_otel_test";
     // when
     let original_executor = OriginalTestExecutor::new(test_name);
-    original_executor.execute().await;
+    let result_path = original_executor.execute().await;
+
+    // then
+    let result_trace_content = build_trace_content(&result_path);
+    let expected_path = format!("./expected/{}.json", test_name);
+    let expected_trace_content = build_trace_content(&expected_path);
+
+    assert_eq!(result_trace_content, expected_trace_content);
 }
