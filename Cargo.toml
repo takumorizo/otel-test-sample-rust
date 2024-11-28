@@ -7,6 +7,3 @@ edition = "2021"
 tokio = { version = "1", features = ["full"] }
 otel-util = { path = "./otel-util", version = "*" }
 anyhow = "1"
-
-# [workspace]
-# members = ["otel-util"]
