@@ -24,13 +24,14 @@ project-root/
 └── README.md
 ```
 #### 2: Cargo.toml に以下を追加してください。
+otel-util crateを、Cargo.toml に追加してください。
+use_otel_at_test マクロは内部で、tokio::test に展開されるため、tokio::testが実行できない場合は、tokio の追加をお願いします。
 
 ```toml
 [dependencies]
 otel-util = { path = "./otel-util", version = "*" }
-
-[workspace]
-members = ["otel-util"]
+# tokio = { version = "1", features = ["full"] } # 本リポジトリの、サンプルコードでは以下のtokioをつかっています。
+# anyhow = "1" # 本リポジトリの、サンプルコードでは、anyhow create を使っています。
 ```
 
 #### 3: ローカルのJaeger/otel-collector の起動
@@ -41,7 +42,7 @@ docker compose up -d
 
 #### 4: 計装対象のテストへのコード付与
 
-以下のように、tokio::testの代わりに、#[use_otel_at_test]で計装実施可能。endpoint なしだと、デフォルト：endpoint="http://localhost:4317"が設定されている。
+以下のように、tokio::testの代わりに、#[use_otel_at_test]で計装実施可能。endpoint なしだと、デフォルト：endpoint="grpc://localhost:4317"が設定されている。
 
 注意）テストコードから呼び出されるコードに対して、tracing::instrument(err)を付与しないと、計装対象にならないため、必要に応じて、マクロを付与。
 
@@ -54,7 +55,7 @@ fn sample_add(a: u64, b: u64) -> Result<u64> {
     Ok(a + b)
 }
 
-#[use_otel_at_test(endpoint="http://localhost:4317")]
+#[use_otel_at_test(endpoint="grpc://localhost:4317")]
 async fn succeed_otel_test() {
     // given
     let a = 10;
